@@ -1,0 +1,4 @@
+# https://gjs.guide/guides/gjs/style-guide.html#rule-list
+tabWidth: 4
+singleQuote: true
+arrowParens: "avoid"

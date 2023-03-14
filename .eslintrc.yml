@@ -1,0 +1,16 @@
+# TODO how to reuse configs in gnome-shell repo without copying and modifying them here
+extends:
+ # delete jsdoc
+ - ./lint/eslintrc-gjs.yml
+ # remove extends and move globals to toplevel
+ - ./lint/eslintrc-shell.yml
+
+overrides:
+  - files: "*"
+    rules:
+      curly:
+        - error
+        - all
+      object-curly-spacing:
+        - error
+        - always

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.kanata" path="/org/gnome/shell/extensions/kanata/">
+    <!-- See also: https://docs.gtk.org/glib/gvariant-format-strings.html -->
+    <key name="host" type="s">
+      <default>"127.0.0.1"</default>
+      <summary>
+        The address that the kanata server listens on
+      </summary>
+    </key>
+    <!-- cannot read uint16 in gjs, use uint32 instead -->
+    <key name="port" type="u">
+      <default>22200</default>
+      <summary>
+        The port that the kanata server listens on
+      </summary>
+    </key>
+    <key name="service-name" type="s">
+      <default>"kanata-all.service"</default>
+      <summary>
+        The name of the kanata system service
+      </summary>
+    </key>
+    <key name="dbus-name" type="s">
+      <default>"kanata_2dall_2eservice"</default>
+      <summary>
+        The dbus name of the kanata system service
+      </summary>
+    </key>
+  </schema>
+</schemalist>
