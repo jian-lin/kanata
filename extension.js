@@ -190,7 +190,48 @@ class Extension {
         logFun(`hide indicator and close connection because ${reason}`);
     }
 
-    _updateLayer(
+    _readBytesAyncPromise(inputStream, cancellable) {
+        return new Promise((resolve, reject) => {
+            inputStream.read_bytes_async(
+                1024,
+                GLib.PRIORITY_DEFAULT,
+                cancellable,
+                (stream, result) => {
+                    try {
+                        const array = stream
+                            .read_bytes_finish(result)
+                            .toArray();
+                        resolve(array);
+                    } catch (e) {
+                        reject(e);
+                    }
+                }
+            );
+        });
+    }
+
+    async *_createInputStreamAsyncGenerator(inputStream, cancellable) {
+        while (true) {
+            const array = await this._readBytesAyncPromise(
+                inputStream,
+                cancellable
+            );
+            // TODO find a better to check that tcp connection is closed by the remote peer
+            // these all fail to do so for kanata server
+            //   - this._connection.is_closed()
+            //   - this._connection.is_connected()
+            //   - this._inputStream.is_closed()
+            // SO answers[1][2] suggest checking if it reads 0 byte
+            // [1]: https://stackoverflow.com/a/16592841
+            // [2]: https://stackoverflow.com/a/65534535
+            if (array.length === 0) {
+                break;
+            }
+            yield array;
+        }
+    }
+
+    async _updateLayer(
         inputStream,
         cancellable,
         textDecoder,
@@ -198,86 +239,71 @@ class Extension {
         indicator,
         hostAndPort
     ) {
-        inputStream.read_bytes_async(
-            1024,
-            GLib.PRIORITY_DEFAULT,
-            cancellable,
-            (stream, result) => {
-                let bytes = null;
-                try {
-                    bytes = stream.read_bytes_finish(result);
-                } catch (e) {
-                    if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
-                        // this error is thrown when this._cancellable.cancel()
-                        // is called in this.disable(), so no need to call
-                        // this._disconnect() here
-                        console.log(
-                            `async read to kanata ${hostAndPort} is cancelled`
-                        );
-                    } else {
-                        this._hideIndicatorAndDisconnect(
-                            indicator,
-                            label,
-                            hostAndPort,
-                            console.error,
-                            `unexpected error happened when async reading from kanata ${hostAndPort}: ${e.message}`
-                        );
-                    }
-                    return;
-                }
-                const array = bytes.toArray();
-                // TODO find a better to check that tcp connection is closed by the remote peer
-                // these all fail to do so for kanata server
-                //   - this._connection.is_closed()
-                //   - this._connection.is_connected()
-                //   - this._inputStream.is_closed()
-                // SO answers[1][2] suggest checking if it reads 0 byte
-                // [1]: https://stackoverflow.com/a/16592841
-                // [2]: https://stackoverflow.com/a/65534535
-                if (array.length === 0) {
+        const inputStreamAsyncGenerator = this._createInputStreamAsyncGenerator(
+            inputStream,
+            cancellable
+        );
+        // use "while loop" instead of "for await ... of" for clear error handling
+        while (true) {
+            let result = null;
+            try {
+                result = await inputStreamAsyncGenerator.next();
+            } catch (e) {
+                if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
+                    // this error is thrown when this._cancellable.cancel()
+                    // is called in this.disable(), so no need to call
+                    // this._disconnect() here
+                    console.log(
+                        `async read to kanata ${hostAndPort} is cancelled`
+                    );
+                } else {
                     this._hideIndicatorAndDisconnect(
                         indicator,
                         label,
                         hostAndPort,
-                        console.log,
-                        `connection has been closed by kanata server ${hostAndPort}`
+                        console.error,
+                        `unexpected error happened when async reading from kanata ${hostAndPort}: ${e.message}`
                     );
-                    return;
                 }
-                const string = textDecoder.decode(array);
-                try {
-                    const layer = JSON.parse(string).LayerChange?.new;
-                    if (layer === undefined) {
-                        throw new SyntaxError('missing LayerChange.new');
-                    }
-
-                    label.set_text(layer);
-                    // show() after set_text() to avoid label flashing
-                    if (!indicator.is_visible()) {
-                        indicator.show();
-                    }
-                } catch (e) {
-                    if (e instanceof SyntaxError) {
-                        console.warn(
-                            `ignore invalid input from kanata ${hostAndPort}: ${e.message}`
-                        );
-                    } else {
-                        console.warn(
-                            `ignore unexpected error when parsing input from kanata ${hostAndPort}: ${e.message}`
-                        );
-                    }
-                }
-
-                this._updateLayer(
-                    inputStream,
-                    cancellable,
-                    textDecoder,
-                    label,
-                    indicator,
-                    hostAndPort
-                );
+                break;
             }
-        );
+
+            if (result.done) {
+                this._hideIndicatorAndDisconnect(
+                    indicator,
+                    label,
+                    hostAndPort,
+                    console.log,
+                    `connection has been closed by kanata server ${hostAndPort}`
+                );
+                break;
+            }
+
+            const array = result.value;
+            const string = textDecoder.decode(array);
+            try {
+                const layer = JSON.parse(string).LayerChange?.new;
+                if (layer === undefined) {
+                    throw new SyntaxError('missing LayerChange.new');
+                }
+
+                label.set_text(layer);
+                // show() after set_text() to avoid label flashing
+                if (!indicator.is_visible()) {
+                    indicator.show();
+                }
+            } catch (e) {
+                if (e instanceof SyntaxError) {
+                    console.warn(
+                        `ignore invalid input from kanata ${hostAndPort}: ${e.message}`
+                    );
+                } else {
+                    console.warn(
+                        `ignore unexpected error when parsing input from kanata ${hostAndPort}: ${e.message}`
+                    );
+                }
+            }
+        }
     }
 
     _getKanataState(dbusConnection, dbusGetStateParams, dbusName) {
