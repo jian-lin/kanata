@@ -2,8 +2,8 @@
     "uuid": "kanata@linj.tech",
     "name": "Kanata",
     "description": "Display current Kanata layer",
-    "shell-version": [ "44" ],
     "url": "https://todo.linj.tech",
-    "session-modes": [ "user", "unlock-dialog" ],
-    "version": 1
+    "shell-version": ["45"],
+    "session-modes": ["user", "unlock-dialog"],
+    "settings-schema": "org.gnome.shell.extensions.kanata"
 }

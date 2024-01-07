@@ -5,15 +5,19 @@
 //   2. connect to kanata, read from it asynchronously and update the indicator,
 //   3. subscribe the kanata starting signal and do step 2 when receiving it.
 
-const { Clutter, GLib, Gio, St } = imports.gi;
+import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
+import St from 'gi://St';
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Main = imports.ui.main;
-const Me = ExtensionUtils.getCurrentExtension();
-const { Button } = imports.ui.panelMenu;
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
 
-class Extension {
-    constructor() {
+export default class KanataExtension extends Extension {
+    constructor(metadata) {
+        super(metadata);
+
         this._hostAndPort = null;
         this._connection = null;
         this._inputStream = null;
@@ -29,11 +33,11 @@ class Extension {
     }
 
     enable() {
-        console.log(`enabling ${Me.metadata.name}`);
+        console.log(`enabling ${this.metadata.name}`);
 
         [this._label, this._indicator] = this._createIndicator();
         try {
-            Main.panel.addToStatusArea(Me.metadata.uuid, this._indicator);
+            Main.panel.addToStatusArea(this.metadata.uuid, this._indicator);
         } catch (e) {
             console.error(
                 `failed to add kanata indicator to Main.panel: ${e.message}`
@@ -48,9 +52,7 @@ class Extension {
             'ActiveState',
         ]);
 
-        this._settings = ExtensionUtils.getSettings(
-            'org.gnome.shell.extensions.kanata'
-        );
+        this._settings = this.getSettings();
 
         const host = this._settings.get_string('host');
         const port = this._settings.get_uint('port');
@@ -90,7 +92,7 @@ class Extension {
     // unlock-dialog is included in session-modes because the kanata layer can
     // affect the way users input their password to unlock the session.
     disable() {
-        console.log(`disabling ${Me.metadata.name}`);
+        console.log(`disabling ${this.metadata.name}`);
 
         if (this._indicator) {
             this._indicator.destroy();
@@ -399,11 +401,6 @@ class Extension {
             }
         );
     }
-}
-
-function init(meta) {
-    console.log(`initializing ${meta.metadata.name}`);
-    return new Extension();
 }
 
 // Local Variables:
