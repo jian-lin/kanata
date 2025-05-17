@@ -2,7 +2,7 @@
     "uuid": "kanata@linj.tech",
     "name": "Kanata",
     "description": "Display current Kanata layer",
-    "shell-version": ["45", "46", "47", "48"],
+    "shell-version": ["48"],
     "url": "https://github.com/jian-lin/kanata",
     "session-modes": ["user", "unlock-dialog"],
     "settings-schema": "org.gnome.shell.extensions.kanata"

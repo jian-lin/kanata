@@ -33,14 +33,14 @@ export default class KanataExtension extends Extension {
     }
 
     enable() {
-        console.log(`enabling ${this.metadata.name}`);
+        this.getLogger().log(`enabling`);
 
         [this._label, this._indicator] = this._createIndicator();
         try {
             Main.panel.addToStatusArea(this.metadata.uuid, this._indicator);
         } catch (e) {
-            console.error(
-                `failed to add kanata indicator to Main.panel: ${e.message}`
+            this.getLogger().error(
+                `failed to add indicator to Main.panel: ${e.message}`
             );
             return;
         }
@@ -69,8 +69,8 @@ export default class KanataExtension extends Extension {
             // TODO do we REALLY need to make it asynchronous?
             this._dbusConnection = Gio.DBus.system;
         } catch (e) {
-            console.error(
-                `skip subscribing kanata starting signal because we failed to get dbus connection: ${e.message}`
+            this.getLogger().error(
+                `skip subscribing starting signal because we failed to get dbus connection: ${e.message}`
             );
             return;
         }
@@ -92,7 +92,7 @@ export default class KanataExtension extends Extension {
     // unlock-dialog is included in session-modes because the kanata layer can
     // affect the way users input their password to unlock the session.
     disable() {
-        console.log(`disabling ${this.metadata.name}`);
+        this.getLogger().log(`disabling`);
 
         if (this._indicator) {
             this._indicator.destroy();
@@ -102,7 +102,7 @@ export default class KanataExtension extends Extension {
 
         if (this._isConnected && this._cancellable) {
             this._cancellable.cancel();
-            console.log('cancel read');
+            this.getLogger().log('cancel read');
         }
         this._cancellable = null;
 
@@ -143,7 +143,7 @@ export default class KanataExtension extends Extension {
         try {
             [this._connection, this._inputStream] = this._connect(hostAndPort);
         } catch (e) {
-            console.error(`failed to connect to kanata: ${e.message}`);
+            this.getLogger().error(`failed to connect to server: ${e.message}`);
             return;
         }
         this._updateLayer(
@@ -173,8 +173,8 @@ export default class KanataExtension extends Extension {
             try {
                 this._connection.close(null);
             } catch (e) {
-                console.warn(
-                    `failed to close connection to kanata ${hostAndPort}: ${e.message}`
+                this.getLogger().warn(
+                    `failed to close connection to server ${hostAndPort}: ${e.message}`
                 );
             }
         }
@@ -255,16 +255,16 @@ export default class KanataExtension extends Extension {
                     // this error is thrown when this._cancellable.cancel()
                     // is called in this.disable(), so no need to call
                     // this._disconnect() here
-                    console.log(
-                        `async read to kanata ${hostAndPort} is cancelled`
+                    this.getLogger().log(
+                        `async read to server ${hostAndPort} is cancelled`
                     );
                 } else {
                     this._hideIndicatorAndDisconnect(
                         indicator,
                         label,
                         hostAndPort,
-                        console.error,
-                        `unexpected error happened when async reading from kanata ${hostAndPort}: ${e.message}`
+                        this.getLogger().error,
+                        `unexpected error happened when async reading from server ${hostAndPort}: ${e.message}`
                     );
                 }
                 break;
@@ -275,8 +275,8 @@ export default class KanataExtension extends Extension {
                     indicator,
                     label,
                     hostAndPort,
-                    console.log,
-                    `connection has been closed by kanata server ${hostAndPort}`
+                    this.getLogger().log,
+                    `connection has been closed by server ${hostAndPort}`
                 );
                 break;
             }
@@ -296,12 +296,12 @@ export default class KanataExtension extends Extension {
                 }
             } catch (e) {
                 if (e instanceof SyntaxError) {
-                    console.warn(
-                        `ignore invalid input from kanata ${hostAndPort}: ${e.message}`
+                    this.getLogger().warn(
+                        `ignore invalid input from server ${hostAndPort}: ${e.message}`
                     );
                 } else {
-                    console.warn(
-                        `ignore unexpected error when parsing input from kanata ${hostAndPort}: ${e.message}`
+                    this.getLogger().warn(
+                        `ignore unexpected error when parsing input from server ${hostAndPort}: ${e.message}`
                     );
                 }
             }
@@ -374,16 +374,16 @@ export default class KanataExtension extends Extension {
                         dbusName
                     );
                 } catch (e) {
-                    console.warn(
-                        `failed to get kanata state using dbus: ${e.message}`
+                    this.getLogger().warn(
+                        `failed to get state using dbus: ${e.message}`
                     );
                 }
                 if (state === 'active') {
-                    console.log(`kanata server ${hostAndPort} just started`);
+                    this.getLogger().log(`server ${hostAndPort} just started`);
                     // kanata takes 2s to start, so this is almost always true
                     if (!this._isConnected) {
-                        console.log(
-                            `re-connect to kanata server ${hostAndPort}`
+                        this.getLogger().log(
+                            `re-connect to server ${hostAndPort}`
                         );
                         this._connectAndUpdateLayer(
                             hostAndPort,
@@ -393,7 +393,7 @@ export default class KanataExtension extends Extension {
                             indicator
                         );
                     } else {
-                        console.warn(
+                        this.getLogger().warn(
                             'this should never happen: the previous connection should be closed (by server) now, but it is still open'
                         );
                     }
