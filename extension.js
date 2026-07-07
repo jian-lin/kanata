@@ -283,26 +283,29 @@ export default class KanataExtension extends Extension {
 
             const array = result.value;
             const string = textDecoder.decode(array);
-            try {
-                const layer = JSON.parse(string).LayerChange?.new;
-                if (layer === undefined) {
-                    throw new SyntaxError('missing LayerChange.new');
-                }
-
-                label.set_text(layer);
-                // show() after set_text() to avoid label flashing
-                if (!indicator.is_visible()) {
-                    indicator.show();
-                }
-            } catch (e) {
-                if (e instanceof SyntaxError) {
-                    this.getLogger().warn(
-                        `ignore invalid input from server ${hostAndPort}: ${e.message}`
-                    );
-                } else {
-                    this.getLogger().warn(
-                        `ignore unexpected error when parsing input from server ${hostAndPort}: ${e.message}`
-                    );
+            const messages = string.trim().split('\n'); // newline-separated
+            for (const message of messages) {
+                try {
+                    const layer = JSON.parse(message).LayerChange?.new;
+                    if (layer === undefined) {
+                        continue;
+                    }
+    
+                    label.set_text(layer);
+                    // show() after set_text() to avoid label flashing
+                    if (!indicator.is_visible()) {
+                        indicator.show();
+                    }
+                } catch (e) {
+                    if (e instanceof SyntaxError) {
+                        this.getLogger().warn(
+                            `ignore invalid input (${message}) from server ${hostAndPort}: ${e.message}`
+                        );
+                    } else {
+                        this.getLogger().warn(
+                            `ignore unexpected error when parsing input (${message}) from server ${hostAndPort}: ${e.message}`
+                        );
+                    }
                 }
             }
         }
